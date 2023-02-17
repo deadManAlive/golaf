@@ -1,0 +1,6 @@
+GOLAF
+-----
+
+A Go project around WAV (LPCM RIFF) processing, for now:
+* Read (and validate) WAV headers
+* Planned as olafpp port
