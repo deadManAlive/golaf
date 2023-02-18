@@ -2,6 +2,7 @@ package wav
 
 import (
 	"errors"
+	"fmt"
 	"os"
 
 	"github.com/deadManAlive/golaf/util"
@@ -14,13 +15,29 @@ type Wav struct {
 	byteRate    uint32
 	blockAlign  uint16
 	bitsPerSpl  uint16
-	pcmSample   []float32
+	pcmSample   []int
 }
 
+func pow(x, y int) int {
+	res := 1
+	for i := 0; i < y; i++ {
+		res *= x
+	}
+	return res
+}
+
+// only works on mono, integer sample
 func ReadFile(filename string) (Wav, error) {
 	f, err := os.Open(filename)
 	if err != nil {
 		return Wav{}, errors.New("error opening file")
+	}
+	defer f.Close()
+
+	info, _ := f.Stat()
+	size := info.Size()
+	if size > int64(pow(2, 30)) {
+		fmt.Printf("Warning: file size is massive (%v GB), expect performance issues.\n", size/1000000000)
 	}
 
 	word := make([]byte, 2)
@@ -39,7 +56,6 @@ func ReadFile(filename string) (Wav, error) {
 	format, _ := util.ReadFourBytesBE(dword)
 
 	// read subchunkid1
-	f.Seek(12, 0)
 	f.Read(dword)
 	subChunk1Id, _ := util.ReadFourBytesBE(dword)
 
@@ -59,36 +75,48 @@ func ReadFile(filename string) (Wav, error) {
 	res.audioFormat = audioFormat
 
 	// read numchannels
-	f.Seek(22, 0)
 	f.Read(word)
 	numChannels, _ := util.ReadTwoBytes(word)
 	res.numChannels = numChannels
 
 	// read samplerate
-	f.Seek(24, 0)
 	f.Read(dword)
 	sampleRate, _ := util.ReadFourBytes(dword)
 	res.sampleRate = sampleRate
 
 	// read byterate
-	f.Seek(28, 0)
 	f.Read(dword)
 	byteRate, _ := util.ReadFourBytes(dword)
 	res.byteRate = byteRate
 
 	// read blockalign
-	f.Seek(32, 0)
 	f.Read(word)
 	blockAlign, _ := util.ReadTwoBytes(word)
 	res.blockAlign = blockAlign
 
 	// read bitsperspl
-	f.Seek(34, 0)
 	f.Read(word)
 	bitsPerSpl, _ := util.ReadTwoBytes(word)
 	res.bitsPerSpl = bitsPerSpl
 
-	f.Close()
-	res.pcmSample = []float32{1.0}
+	// read subchunk2size
+	f.Seek(40, 0)
+	f.Read(dword)
+	subChunk2Size, _ := util.ReadFourBytes(dword)
+	bufLength := subChunk2Size * 8 / uint32(bitsPerSpl)
+	buffer := make([]int, 0, bufLength)
+	reader := make([]byte, bitsPerSpl/8)
+
+	var s int
+	for {
+		_, e := f.Read(reader)
+		if e != nil {
+			break
+		}
+		s = util.LiToInt(reader) // TODO: small width buffer read as unsigned data
+		buffer = append(buffer, s)
+	}
+
+	res.pcmSample = buffer
 	return res, nil
 }
