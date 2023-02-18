@@ -2,7 +2,6 @@ package wav
 
 import (
 	"errors"
-	"fmt"
 	"os"
 
 	"github.com/deadManAlive/golaf/util"
@@ -15,6 +14,7 @@ type Wav struct {
 	byteRate    uint32
 	blockAlign  uint16
 	bitsPerSpl  uint16
+	pcmSample   []float32
 }
 
 func ReadFile(filename string) (Wav, error) {
@@ -26,78 +26,69 @@ func ReadFile(filename string) (Wav, error) {
 	word := make([]byte, 2)
 	dword := make([]byte, 4)
 
-	wav := Wav{}
+	res := Wav{}
 
 	// format naming based on http://soundfile.sapp.org/doc/WaveFormat/
 	// read chunkid
 	f.Read(dword)
 	chunkId, _ := util.ReadFourBytesBE(dword)
-	fmt.Printf("chunkid: %#x ('%s')\n", chunkId, dword)
 
 	// read format
 	f.Seek(8, 0)
 	f.Read(dword)
 	format, _ := util.ReadFourBytesBE(dword)
-	fmt.Printf("format: %#x ('%s')\n", format, dword)
 
 	// read subchunkid1
 	f.Seek(12, 0)
 	f.Read(dword)
 	subChunk1Id, _ := util.ReadFourBytesBE(dword)
-	fmt.Printf("subchunk1id: %#x ('%s')\n", subChunk1Id, dword)
+
+	if chunkId != 0x52494646 || format != 0x57415645 || subChunk1Id != 0x666d7420 {
+		return Wav{}, errors.New("unsupported or corrupted format")
+	}
 
 	// read audioformat
 	f.Seek(20, 0)
 	f.Read(word)
 	audioFormat, _ := util.ReadTwoBytes(word)
-	fmt.Printf("audioformat: %d ", audioFormat)
-	switch audioFormat {
-	case 0x0000:
-		fmt.Println("(Unknown)")
-	case 0x0001:
-		fmt.Println("(PCM)")
-	case 0xFFFF:
-		fmt.Println("(Experimental)")
-	default:
-		fmt.Println("(Compressed formats)")
+
+	if audioFormat != 1 {
+		return Wav{}, errors.New("non-LPCM format is unsupported")
 	}
-	wav.audioFormat = audioFormat
+
+	res.audioFormat = audioFormat
 
 	// read numchannels
 	f.Seek(22, 0)
 	f.Read(word)
 	numChannels, _ := util.ReadTwoBytes(word)
-	fmt.Printf("numch: %d\n", numChannels)
-	wav.numChannels = numChannels
+	res.numChannels = numChannels
 
 	// read samplerate
 	f.Seek(24, 0)
 	f.Read(dword)
 	sampleRate, _ := util.ReadFourBytes(dword)
-	fmt.Printf("samplerate: %d\n", sampleRate)
-	wav.sampleRate = sampleRate
+	res.sampleRate = sampleRate
 
 	// read byterate
 	f.Seek(28, 0)
 	f.Read(dword)
 	byteRate, _ := util.ReadFourBytes(dword)
-	fmt.Printf("byterate: %d\n", byteRate)
-	wav.byteRate = byteRate
+	res.byteRate = byteRate
 
 	// read blockalign
 	f.Seek(32, 0)
 	f.Read(word)
 	blockAlign, _ := util.ReadTwoBytes(word)
-	fmt.Printf("blockalign: %d\n", blockAlign)
-	wav.blockAlign = blockAlign
+	res.blockAlign = blockAlign
 
 	// read bitsperspl
 	f.Seek(34, 0)
 	f.Read(word)
 	bitsPerSpl, _ := util.ReadTwoBytes(word)
-	fmt.Printf("bitspersample: %d", bitsPerSpl)
-	wav.bitsPerSpl = bitsPerSpl
+	res.bitsPerSpl = bitsPerSpl
 
 	f.Close()
-	return wav, nil
+	res.pcmSample = []float32{1.0}
+	return res, nil
 }

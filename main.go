@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/deadManAlive/golaf/util"
 	"github.com/deadManAlive/golaf/wav"
 )
 
@@ -24,5 +25,9 @@ func main() {
 		filename = args[0]
 	}
 
-	wav.ReadFile(filename)
+	riff, err := wav.ReadFile(filename)
+
+	util.Check(err)
+
+	fmt.Printf("%+v\n", riff)
 }
