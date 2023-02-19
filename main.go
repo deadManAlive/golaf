@@ -29,5 +29,5 @@ func main() {
 
 	util.Check(err)
 
-	fmt.Printf("%+v\n", riff)
+	fmt.Printf("%v\n", riff)
 }

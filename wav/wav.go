@@ -6,21 +6,12 @@ import (
 	"os"
 
 	"github.com/deadManAlive/golaf/util"
+	"golang.org/x/exp/constraints"
 )
 
-type Wav struct {
-	audioFormat uint16
-	numChannels uint16
-	sampleRate  uint32
-	byteRate    uint32
-	blockAlign  uint16
-	bitsPerSpl  uint16
-	pcmSample   []int
-}
-
-func pow(x, y int) int {
-	res := 1
-	for i := 0; i < y; i++ {
+func pow[T constraints.Integer](x, y T) T {
+	var res T = 1
+	for i := 0; i < int(y); i++ {
 		res *= x
 	}
 	return res
