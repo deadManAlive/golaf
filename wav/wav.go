@@ -104,7 +104,7 @@ func ReadFile(filename string) (Wav, error) {
 		if e != nil {
 			break
 		}
-		s = util.LiToInt(reader) // TODO: small width buffer read as unsigned data
+		s = util.LiToInt(reader)
 		buffer = append(buffer, s)
 	}
 

@@ -38,10 +38,17 @@ func LiToInt(bytes []byte) int {
 	res := 0
 
 	for i := range bytes {
-		ii := len(bytes) - 1 - i
-		v := int(bytes[ii])
-		v = v << (8 * (ii))
-		res = res | v
+		v := int(bytes[i])
+		res |= v << (8 * i)
+	}
+
+	// Check if the MSB is set, indicating a negative value
+	if (res & (1 << (8*len(bytes) - 1))) != 0 {
+		// Invert the two's complement by flipping all bits and adding 1
+		mask := (1 << (8 * len(bytes))) - 1
+		res = ^res & mask
+		res += 1
+		res = -res
 	}
 
 	return res
